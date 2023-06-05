@@ -1,5 +1,4 @@
-
-class FacilityBasicInfoSerializer(serializers.ModelSerializer):
+class FacilityListSerializer(serializers.ModelSerializer):
     id = serializers.UUIDField(source="external_id", read_only=True)
     local_body_object = LocalBodySerializer(source="local_body", read_only=True)
     facility_type = serializers.SerializerMethodField()
@@ -9,13 +8,6 @@ class FacilityBasicInfoSerializer(serializers.ModelSerializer):
     bed_count = serializers.SerializerMethodField()
     phone_number = serializers.CharField(read_only=True)
 
-    def get_bed_count(self, facility):
-        return Bed.objects.filter(facility=facility).count()
-
-    def get_patient_count(self, facility):
-        return PatientRegistration.objects.filter(
-            facility=facility, is_active=True
-        ).count()
 
     def get_facility_type(self, facility):
         return {
@@ -36,3 +28,11 @@ class FacilityBasicInfoSerializer(serializers.ModelSerializer):
             "bed_count",
             "phone_number",
         )
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        queryset = queryset.annotate(
+            bed_count=Count('beds'),
+            patient_count=Count('patientregistrations', filter=Q(patientregistrations__is_active=True))
+        )
+        return queryset
